@@ -1,0 +1,914 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <title>3D Beverage Container Display</title>
+    <link href="https://cdn.jsdelivr.net/npm/bootstrap@5.3.0-alpha1/dist/css/bootstrap.min.css" rel="stylesheet">
+    <style>
+        body {
+            margin: 0;
+            overflow: hidden;
+            background: #f8f9fa;
+            font-family: Arial, sans-serif;
+        }
+
+        .header {
+            background: #343a40;
+            color: #fff;
+            padding: 15px 0;
+            text-align: center;
+        }
+
+        .logo {
+            font-size: 2rem;
+            font-weight: 700;
+            background: linear-gradient(45deg, #ff4d4d, #f9cb28);
+            -webkit-background-clip: text;
+            background-clip: text;
+            color: transparent;
+        }
+
+        .strapline {
+            font-size: 1rem;
+            font-style: italic;
+            margin-top: 5px;
+            color: #ccc;
+        }
+
+        #controls {
+            position: absolute;
+            top: 70px;
+            left: 20px;
+            z-index: 10;
+            background: rgba(255, 255, 255, .8);
+            padding: 15px;
+            border-radius: 8px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+            max-width: 250px;
+            max-height: 85vh;
+            overflow-y: auto;
+        }
+
+        .control-section {
+            margin-bottom: 15px;
+            border-bottom: 1px solid #eee;
+            padding-bottom: 10px;
+        }
+
+        .control-section:last-child {
+            border-bottom: none;
+        }
+
+        .section-title {
+            font-weight: 700;
+            margin-bottom: 8px;
+            color: #333;
+        }
+
+        button {
+            padding: 8px 12px;
+            margin: 4px;
+            font-size: 14px;
+            cursor: pointer;
+            background: #007bff;
+            color: #fff;
+            border: none;
+            border-radius: 4px;
+            transition: .3s;
+        }
+
+        button:hover {
+            background: #0056b3;
+        }
+
+        .btn-toggle {
+            background: #6c757d;
+        }
+
+        .btn-toggle.active {
+            background: #28a745;
+        }
+
+        #model-selector button {
+            background: #17a2b8;
+        }
+
+        #model-selector button:hover {
+            background: #138496;
+        }
+
+        #model-selector button.active {
+            background: #0f6674;
+            box-shadow: 0 0 5px rgba(0, 0, 0, .3);
+        }
+
+        #info {
+            position: absolute;
+            bottom: 20px;
+            left: 20px;
+            background: rgba(255, 255, 255, .8);
+            padding: 10px;
+            border-radius: 5px;
+            max-width: 80%;
+            max-height: 150px;
+            overflow-y: auto;
+            font-family: monospace;
+            font-size: 12px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+        }
+
+        .color-btn {
+            width: 30px;
+            height: 30px;
+            border-radius: 50%;
+            display: inline-block;
+            margin: 4px;
+            cursor: pointer;
+            border: 2px solid #ccc;
+        }
+
+        .color-btn:hover {
+            transform: scale(1.1);
+            border-color: #333;
+        }
+
+        .reset-btn {
+            display: block;
+            margin-top: 8px;
+            font-size: 12px;
+            width: 100%;
+            text-align: center;
+            background: #6c757d;
+        }
+
+        .model-info {
+            position: absolute;
+            top: 100px;
+            right: 20px;
+            background: rgba(255, 255, 255, .8);
+            padding: 15px;
+            border-radius: 8px;
+            max-width: 250px;
+            box-shadow: 0 4px 8px rgba(0, 0, 0, .1);
+        }
+
+        .model-info h3 {
+            margin: 0 0 8px;
+            font-size: 18px;
+            border-bottom: 1px solid #eee;
+        }
+
+        .model-info p {
+            font-size: 14px;
+            line-height: 1.4;
+        }
+
+        .slider-container {
+            margin: 10px 0;
+        }
+
+        .slider-container label {
+            display: block;
+            font-size: 12px;
+            margin-bottom: 4px;
+        }
+
+        .slider {
+            width: 100%;
+        }
+
+        @media(max-width: 768px) {
+            #controls, .model-info {
+                position: relative;
+                top: auto;
+                left: auto;
+                right: auto;
+                margin: 10px;
+                max-width: none;
+            }
+
+            body {
+                display: flex;
+                flex-direction: column;
+            }
+        }
+
+        #loading-screen {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background: rgba(0, 0, 0, .7);
+            display: flex;
+            flex-direction: column;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            color: #fff;
+        }
+
+        .spinner {
+            width: 50px;
+            height: 50px;
+            border: 5px solid #f3f3f3;
+            border-top: 5px solid #3498db;
+            border-radius: 50%;
+            animation: spin 1s linear infinite;
+            margin-bottom: 20px;
+        }
+
+        @keyframes spin {
+            0% {
+                transform: rotate(0);
+            }
+            100% {
+                transform: rotate(360deg);
+            }
+        }
+    </style>
+    <script type="importmap">
+        {
+            "imports": {
+                "three": "https://cdn.jsdelivr.net/npm/three@0.154.0/build/three.module.js",
+                "three/addons/": "https://cdn.jsdelivr.net/npm/three@0.154.0/examples/jsm/"
+            }
+        }
+    </script>
+</head>
+<body>
+    <div id="loading-screen">
+        <div class="spinner"></div>
+        <div id="loading-text">Loading models...</div>
+    </div>
+    <div class="header">
+        <div class="logo">3D Beverage Container Display</div>
+        <div class="strapline">Explore our 3D cup and bottle series</div>
+    </div>
+    <div id="controls">
+        <div class="control-section" id="model-selector">
+            <div class="section-title">Select Model</div>
+            <button id="model1" class="active">Mug</button>
+            <button id="model2">Cola Bottle</button>
+            <button id="model3">Sprite Bottle</button>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Model Animation</div>
+            <button id="openLid">Open Lid</button>
+            <button id="closeLid">Close Lid</button>
+            <button id="squeezeBottle">Squeeze Bottle</button>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Display Mode</div>
+            <button id="toggleWireframe" class="btn-toggle">Toggle Wireframe</button>
+            <button id="toggleTextures" class="btn-toggle">Textures On/Off</button>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Lighting Control</div>
+            <button id="toggleLight">Lights On/Off</button>
+            <button id="increaseBrightness">Increase Brightness</button>
+            <button id="decreaseBrightness">Decrease Brightness</button>
+            <div class="slider-container">
+                <label>Main Light Horizontal Angle</label>
+                <input type="range" id="lightHorizontal" class="slider" min="0" max="360" value="45">
+            </div>
+            <div class="slider-container">
+                <label>Main Light Vertical Angle</label>
+                <input type="range" id="lightVertical" class="slider" min="0" max="90" value="60">
+            </div>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Camera Control</div>
+            <button id="resetCamera">Reset View</button>
+            <button id="topView">Top View</button>
+            <button id="frontView">Front View</button>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Color Selection</div>
+            <div id="colorPicker">
+                <span class="color-btn" style="background:#ff4d4d" data-color="#ff4d4d"></span>
+                <span class="color-btn" style="background:#4d79ff" data-color="#4d79ff"></span>
+                <span class="color-btn" style="background:#4dff4d" data-color="#4dff4d"></span>
+                <span class="color-btn" style="background:#ffff4d" data-color="#ffff4d"></span>
+                <button id="resetColor" class="reset-btn">Restore Original Color</button>
+            </div>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Debug Tools</div>
+            <button id="checkMaterials">Check Materials</button>
+            <button id="resetMaterials">Reset Materials</button>
+        </div>
+        <div class="control-section">
+            <div class="section-title">Other Options</div>
+            <button id="aboutButton">About</button>
+        </div>
+    </div>
+    <div class="model-info">
+        <h3>Mug</h3>
+        <p>A stylish ceramic mug with wooden lid, perfect for keeping your favorite beverages hot longer. Features an easy open-close mechanism.</p>
+        <p>Capacity: 350 ml, Height: 15 cm, Diameter: 8 cm</p>
+    </div>
+    <div id="info"></div>
+
+    <script type="module">
+        import * as THREE from 'three';
+        import { OrbitControls } from 'three/addons/controls/OrbitControls.js';
+        import { GLTFLoader } from 'three/addons/loaders/GLTFLoader.js';
+
+        // Global variable declarations
+        let scene, camera, renderer, controls, clock, currentMixer = null;
+        const mixers = {}, models = {}, actions = {}, originalMaterials = {}, lights = [];
+        let isWireframe = false, texturesEnabled = true, currentModelId = 'model1';
+        const info = document.getElementById('info');
+        const loadScr = document.getElementById('loading-screen');
+        const loadText = document.getElementById('loading-text');
+
+        // Model configuration object
+        const cfgs = {
+            model1: {
+                file: 'cup.glb',
+                name: 'Mug',
+                desc: 'Ceramic mug with wooden lid, perfect for hot beverages.',
+                cam: { x: 0, y: 1.5, z: 3 },
+                hasLid: true
+            },
+            model2: {
+                file: 'cola.glb',
+                name: 'Cola Bottle',
+                desc: 'Plastic Coca-Cola bottle with distinctive contoured shape.',
+                cam: { x: 0, y: 1.5, z: 3 },
+                hasLid: true,
+                hasSqueeze: true
+            },
+            model3: {
+                file: 'spritebottle.glb',
+                name: 'Sprite Bottle',
+                desc: 'Transparent plastic Sprite bottle with textured surface.',
+                cam: { x: 0, y: 1.5, z: 3 },
+                hasLid: true,
+                hasSqueeze: true
+            }
+        };
+
+        // Helper function: Display message in info panel
+        const show = (m) => {
+            info.innerHTML += m + '<br>';
+            info.scrollTop = info.scrollHeight;
+            console.log(m);
+        };
+
+        // Helper function: Clear info panel
+        const clear = () => {
+            info.innerHTML = '';
+        };
+
+        // Initialize scene and start animation loop
+        init();
+        animate();
+
+        /**
+         * Initialize Three.js scene, camera, renderer and controls
+         */
+        function init() {
+            // Create scene
+            scene = new THREE.Scene();
+            scene.background = new THREE.Color(0xf0f0f0);
+
+            // Create camera
+            camera = new THREE.PerspectiveCamera(60, innerWidth / innerHeight, 0.1, 100);
+            camera.position.set(0, 1.5, 3);
+
+            // Create renderer
+            renderer = new THREE.WebGLRenderer({ antialias: true });
+            renderer.setSize(innerWidth, innerHeight);
+            renderer.setPixelRatio(devicePixelRatio);
+            renderer.useLegacyLights = false;
+            renderer.shadowMap.enabled = true;
+            renderer.shadowMap.type = THREE.PCFSoftShadowMap;
+            document.body.appendChild(renderer.domElement);
+
+            // Create orbit controls
+            controls = new OrbitControls(camera, renderer.domElement);
+            controls.enableDamping = true;
+            controls.dampingFactor = .05;
+
+            // Add scene lights
+            addLights();
+
+            // Create clock object
+            clock = new THREE.Clock();
+
+            // Setup event listeners and load models
+            setupEvents();
+            loadAll();
+
+            // Window resize event handler
+            addEventListener('resize', () => {
+                camera.aspect = innerWidth / innerHeight;
+                camera.updateProjectionMatrix();
+                renderer.setSize(innerWidth, innerHeight);
+            });
+        }
+
+        /**
+         * Add various lights to the scene to enhance 3D effect
+         */
+        function addLights() {
+            // Create various lights and add to lights array
+            lights.push(
+                new THREE.AmbientLight(0xffffff, .7),
+                new THREE.DirectionalLight(0xffffff, 1),
+                new THREE.DirectionalLight(0xffffff, .5),
+                new THREE.DirectionalLight(0xffffff, .4),
+                new THREE.PointLight(0xffffff, .5),
+                new THREE.HemisphereLight(0xffffff, 0xffffff, .3)
+            );
+
+            // Configure main directional light (for casting shadows)
+            lights[1].position.set(5, 10, 7);
+            lights[1].castShadow = true;
+            lights[1].shadow.mapSize.set(2048, 2048);
+            lights[1].shadow.camera.far = 50;
+
+            // Set positions for other lights
+            lights[2].position.set(-5, 5, -5);
+            lights[3].position.set(0, 5, -10);
+            lights[4].position.set(0, 2, 0);
+            lights[5].position.set(0, 20, 0);
+
+            // Add all lights to scene
+            lights.forEach(l => scene.add(l));
+        }
+
+        /**
+         * Load all 3D models defined in the configuration
+         */
+        function loadAll() {
+            show('Starting to load all models');
+            loadScr.style.display = 'flex';
+
+            // Load all models in parallel using Promise.all
+            Promise.all(Object.entries(cfgs).map(([id, c]) =>
+                new Promise((res, rej) => loadModel(id, c, res, rej))
+            ))
+            .then(() => {
+                show('All models loaded successfully');
+                loadScr.style.display = 'none';
+                switchModel('model1');
+            })
+            .catch(e => {
+                show('Loading error: ' + e.message);
+                loadScr.style.display = 'none';
+            });
+        }
+
+        /**
+         * Load a single 3D model
+         * @param {string} id - Model ID
+         * @param {Object} cfg - Model configuration object
+         * @param {Function} res - Promise resolve callback
+         * @param {Function} rej - Promise reject callback
+         */
+        function loadModel(id, cfg, res, rej) {
+            const loader = new GLTFLoader();
+            loadText.textContent = `Loading ${cfg.name}...`;
+
+            loader.load(
+                cfg.file,
+                // Success callback
+                (gltf) => {
+                    // Process model position and scale
+                    const g = gltf.scene;
+                    const s = new THREE.Box3().setFromObject(g);
+                    const cent = new THREE.Vector3();
+                    s.getCenter(cent);
+                    g.position.sub(cent);
+                    g.scale.set(1, 1, 1);
+
+                    // Create container group and add to scene
+                    const group = new THREE.Group();
+                    group.add(g);
+                    group.visible = false;
+                    scene.add(group);
+                    models[id] = group;
+
+                    // Save original material state for reset
+                    originalMaterials[id] = [];
+                    group.traverse(n => {
+                        if (n.isMesh) {
+                            // Save deep copy of materials
+                            if (Array.isArray(n.material)) {
+                                originalMaterials[id].push({
+                                    mesh: n,
+                                    materials: n.material.map(m => m.clone())
+                                });
+                            } else {
+                                originalMaterials[id].push({
+                                    mesh: n,
+                                    materials: [n.material.clone()]
+                                });
+                            }
+                        }
+                    });
+
+                    // Setup animation mixer and actions
+                    const mixer = new THREE.AnimationMixer(g);
+                    mixers[id] = mixer;
+                    actions[id] = {};
+
+                    // Process model's built-in animation clips
+                    if (gltf.animations.length > 0) {
+                        gltf.animations.forEach(cl => {
+                            const act = mixer.clipAction(cl);
+                            const n = cl.name.toLowerCase();
+
+                            if (n.includes('open')) {
+                                actions[id].open = act;
+                            } else if (n.includes('close')) {
+                                actions[id].close = act;
+                            }
+                        });
+
+                        // If specific named animations not found, use defaults
+                        if (!actions[id].open) {
+                            actions[id].open = mixer.clipAction(gltf.animations[0]);
+                        }
+                        if (!actions[id].close) {
+                            actions[id].close = actions[id].open;
+                        }
+                    }
+
+                    // Create custom animation for squeeze-enabled models
+                    if (cfg.hasSqueeze) {
+                        const t = [0, .3, .6];
+                        const v = [1, 1, 1, 1.2, .4, 1.2, 1, 1, 1];
+                        const clip = new THREE.AnimationClip('squeeze', .6, [
+                            new THREE.VectorKeyframeTrack('.scale', t, v)
+                        ]);
+                        actions[id].squeeze = mixer.clipAction(clip);
+                        show(`✓ Generated squeeze animation for ${cfg.name}`);
+                    }
+
+                    // Set shadow and material properties
+                    group.traverse(n => {
+                        if (n.isMesh) {
+                            n.castShadow = n.receiveShadow = true;
+                        }
+                    });
+
+                    show(`Model ${cfg.name} loaded successfully`);
+                    res();
+                },
+                // Progress callback
+                (xhr) => {
+                    loadText.textContent = `Loading ${cfg.name}: ${Math.floor(xhr.loaded / xhr.total * 100)}%`;
+                },
+                // Error callback
+                (e) => rej(e)
+            );
+        }
+
+        /**
+         * Switch to display a different model
+         * @param {string} id - ID of the model to switch to
+         */
+        function switchModel(id) {
+            // Check if model exists
+            if (!models[id]) {
+                show('Model not loaded');
+                return;
+            }
+
+            // Hide current model, show new model
+            if (models[currentModelId]) {
+                models[currentModelId].visible = false;
+            }
+            models[id].visible = true;
+            currentModelId = id;
+            currentMixer = mixers[id];
+
+            // Update UI state
+            document.querySelectorAll('#model-selector button').forEach(b => b.classList.remove('active'));
+            document.getElementById(id).classList.add('active');
+
+            // Adjust camera position based on model config
+            const p = cfgs[id].cam;
+            camera.position.set(p.x, p.y, p.z);
+            camera.lookAt(0, 0, 0);
+            controls.update();
+
+            // Update info panel
+            document.querySelector('.model-info').innerHTML = `
+                <h3>${cfgs[id].name}</h3>
+                <p>${cfgs[id].desc}</p>
+            `;
+
+            // Update button states and display modes
+            updButtons();
+            updWire();
+            updTex();
+            show('Switched to ' + cfgs[id].name);
+        }
+
+        /**
+         * Update enable/disable state of buttons
+         */
+        function updButtons() {
+            // Enable/disable lid-related buttons
+            const lidOK = cfgs[currentModelId].hasLid && actions[currentModelId].open;
+            ['openLid', 'closeLid'].forEach(id => {
+                const b = document.getElementById(id);
+                b.disabled = !lidOK;
+                b.style.opacity = lidOK ? '1' : '0.5';
+            });
+
+            // Enable/disable squeeze button
+            const sqOK = actions[currentModelId].squeeze !== undefined;
+            const b = document.getElementById('squeezeBottle');
+            b.disabled = !sqOK;
+            b.style.opacity = sqOK ? '1' : '0.5';
+        }
+
+        /**
+         * Update wireframe display mode for model
+         */
+        function updWire() {
+            // Traverse all meshes in current model, set wireframe mode
+            models[currentModelId].traverse(o => {
+                if (o.isMesh) {
+                    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m =>
+                        m.wireframe = isWireframe
+                    );
+                }
+            });
+
+            // Update button display state
+            document.getElementById('toggleWireframe').classList.toggle('active', isWireframe);
+        }
+
+        /**
+         * Update texture display state for model
+         */
+        function updTex() {
+            // Traverse all meshes in current model, set texture enabled state
+            models[currentModelId].traverse(o => {
+                if (o.isMesh) {
+                    (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+                        // Update all texture maps' enabled state
+                        [
+                            'map',
+                            'normalMap',
+                            'roughnessMap',
+                            'metalnessMap',
+                            'emissiveMap'
+                        ].forEach(k => {
+                            if (m[k]) m[k].enabled = texturesEnabled;
+                        });
+
+                        // Mark material for update
+                        m.needsUpdate = true;
+                    });
+                }
+            });
+
+            // Update button display state
+            document.getElementById('toggleTextures').classList.toggle('active', texturesEnabled);
+        }
+
+        /**
+         * Play model animation
+         * @param {string} type - Animation type: 'open', 'close', or 'squeeze'
+         */
+        function play(type) {
+            // Check if animation is available
+            if (!actions[currentModelId] || !actions[currentModelId].open) {
+                show('No animation available');
+                return;
+            }
+
+            // Stop all current animations
+            Object.values(actions[currentModelId]).forEach(a => a && a.stop());
+
+            // Select animation to play
+            let act;
+            if (type === 'squeeze') {
+                act = actions[currentModelId].squeeze;
+            } else {
+                act = actions[currentModelId].open;
+            }
+
+            // Set animation playback parameters
+            act.reset();
+            act.setLoop(THREE.LoopOnce);
+            act.clampWhenFinished = true;
+
+            // Set playback direction based on type
+            if (type === 'close') {
+                act.timeScale = -1;
+                act.time = act.getClip().duration;
+            } else {
+                act.timeScale = 1;
+            }
+
+            // Start playing animation
+            act.play();
+            show('Playing ' + type + ' animation');
+        }
+
+        /**
+         * Setup all UI event listeners
+         */
+        function setupEvents() {
+            // Model animation buttons
+            document.getElementById('openLid').onclick = () => play('open');
+            document.getElementById('closeLid').onclick = () => play('close');
+            document.getElementById('squeezeBottle').onclick = () => play('squeeze');
+
+            // Display mode controls
+            document.getElementById('toggleWireframe').onclick = () => {
+                isWireframe = !isWireframe;
+                updWire();
+                show(isWireframe ? 'Wireframe on' : 'Wireframe off');
+            };
+
+            document.getElementById('toggleTextures').onclick = () => {
+                texturesEnabled = !texturesEnabled;
+                updTex();
+                show(texturesEnabled ? 'Textures on' : 'Textures off');
+            };
+
+            // Lighting controls
+            document.getElementById('toggleLight').onclick = () => {
+                lights.forEach(l => l.visible = !l.visible);
+                show(lights[0].visible ? 'Lights on' : 'Lights off');
+            };
+
+            document.getElementById('increaseBrightness').onclick = () => {
+                lights.forEach(l => l.intensity = Math.min(2, l.intensity + .1));
+                show('Brightness ' + lights[0].intensity.toFixed(1));
+            };
+
+            document.getElementById('decreaseBrightness').onclick = () => {
+                lights.forEach(l => l.intensity = Math.max(.1, l.intensity - .1));
+                show('Brightness ' + lights[0].intensity.toFixed(1));
+            };
+
+            // Light position sliders
+            document.getElementById('lightHorizontal').oninput =
+            document.getElementById('lightVertical').oninput = () => {
+                const h = lightHorizontal.value * Math.PI / 180;
+                const v = lightVertical.value * Math.PI / 180;
+                const d = 15;
+                lights[1].position.set(
+                    d * Math.sin(v) * Math.cos(h),
+                    d * Math.cos(v),
+                    d * Math.sin(v) * Math.sin(h)
+                );
+            };
+
+            // Camera controls
+            document.getElementById('resetCamera').onclick = () => {
+                const p = cfgs[currentModelId].cam;
+                camera.position.set(p.x, p.y, p.z);
+                camera.lookAt(0, 0, 0);
+                controls.update();
+                show('Reset view');
+            };
+
+            document.getElementById('topView').onclick = () => {
+                camera.position.set(0, 5, 0);
+                camera.lookAt(0, 0, 0);
+                controls.update();
+                show('Top view');
+            };
+
+            document.getElementById('frontView').onclick = () => {
+                camera.position.set(0, 0, 5);
+                camera.lookAt(0, 0, 0);
+                controls.update();
+                show('Front view');
+            };
+
+            // Model selection buttons
+            ['model1', 'model2', 'model3'].forEach(id => {
+                document.getElementById(id).onclick = () => switchModel(id);
+            });
+
+            // Color selection buttons
+            document.querySelectorAll('.color-btn').forEach(b => {
+                b.onclick = () => {
+                    const c = b.dataset.color;
+                    models[currentModelId].traverse(o => {
+                        if (o.isMesh) {
+                            (Array.isArray(o.material) ? o.material : [o.material]).forEach(m => {
+                                if (m.color) {
+                                    m.color.set(c);
+                                    m.needsUpdate = true;
+                                }
+                            });
+                        }
+                    });
+                    show('Color ' + c);
+                };
+            });
+
+            // Restore original color button
+            document.getElementById('resetColor').onclick = () => {
+                if (!originalMaterials[currentModelId]) {
+                    show('No original colors available');
+                    return;
+                }
+
+                // Only restore color property, preserve other material settings
+                originalMaterials[currentModelId].forEach(item => {
+                    if (Array.isArray(item.mesh.material)) {
+                        for (let i = 0; i < item.mesh.material.length; i++) {
+                            if (i < item.materials.length && item.mesh.material[i].color && item.materials[i].color) {
+                                item.mesh.material[i].color.copy(item.materials[i].color);
+                                item.mesh.material[i].needsUpdate = true;
+                            }
+                        }
+                    } else if (item.mesh.material.color && item.materials[0].color) {
+                        item.mesh.material.color.copy(item.materials[0].color);
+                        item.mesh.material.needsUpdate = true;
+                    }
+                });
+
+                show('Original colors restored');
+            };
+
+            // Debug buttons
+            document.getElementById('checkMaterials').onclick = () => {
+                clear();
+                if (!models[currentModelId]) return;
+
+                let mesh = 0, mat = 0;
+                models[currentModelId].traverse(o => {
+                    if (o.isMesh) {
+                        mesh++;
+                        mat += Array.isArray(o.material) ? o.material.length : 1;
+                    }
+                });
+                show(`Meshes: ${mesh}, Materials: ${mat}`);
+            };
+
+            document.getElementById('resetMaterials').onclick = () => {
+                // Reset all materials to original state
+                if (!originalMaterials[currentModelId]) {
+                    show('No original materials available');
+                    return;
+                }
+
+                // Apply saved original materials
+                originalMaterials[currentModelId].forEach(item => {
+                    if (Array.isArray(item.mesh.material)) {
+                        // Handle multi-material models
+                        for (let i = 0; i < item.mesh.material.length; i++) {
+                            if (i < item.materials.length) {
+                                item.mesh.material[i] = item.materials[i].clone();
+                            }
+                        }
+                    } else {
+                        // Handle single-material models
+                        item.mesh.material = item.materials[0].clone();
+                    }
+                });
+
+                // Reset display modes
+                isWireframe = false;
+                texturesEnabled = true;
+                updWire();
+                updTex();
+
+                show('All materials reset');
+            };
+
+            // About button
+            document.getElementById('aboutButton').onclick = function() {
+                const d = document.createElement('div');
+                d.innerHTML = '<div style="position:fixed;top:0;left:0;width:100%;height:100%;background:rgba(0,0,0,.7);display:flex;justify-content:center;align-items:center;z-index:1000;overflow-y:auto"><div style="background:#fff;padding:30px;border-radius:8px;max-width:800px;max-height:90vh;overflow-y:auto"><h2 style="color:#333;border-bottom:1px solid #eee;padding-bottom:10px;margin-bottom:20px">About This Application</h2><p>This application is a web-based 3D beverage container viewer built with Three.js, featuring three different beverage container models: a mug, a cola bottle, and a Sprite bottle. Users can freely select models on the webpage, play animations (including lid opening, bottle squeezing, etc.), adjust lighting and camera views, toggle wireframe and textures, change colors, and enjoy rich 3D interactions.</p><h3 style="color:#555;margin-top:20px">Purpose</h3><p>The goal of this application is to demonstrate 3D model loading, rendering, and interaction using WebGL technology (powered by the Three.js framework), helping learners understand how to integrate 3D content into web pages and improve their skills in 3D web development and user interface design.</p><h3 style="color:#555;margin-top:20px">Main Features</h3><ul style="list-style-type:disc;padding-left:20px"><li>Switch between three 3D models (mug, cola bottle, Sprite bottle)</li><li>Lid opening and closing animations for the mug</li><li>Squeezing deformation animations for the cola and Sprite bottles</li><li>Toggle wireframe mode and texture display</li><li>Lighting control (adjust brightness, toggle on/off, change light angles)</li><li>Camera view adjustment (reset, top view, front view)</li><li>Custom model color</li><li>Material inspection and reset</li><li>About popup window showing application information</li></ul><h3 style="color:#555;margin-top:20px">Technologies Used</h3><ul style="list-style-type:disc;padding-left:20px"><li>Three.js: 3D scene construction, model loading, animation control, rendering</li><li>HTML5 / CSS3: Webpage layout and styling</li><li>JavaScript (ES6): Application logic and interactivity</li><li>Blender: 3D modeling and export (.glb format)</li></ul><h3 style="color:#555;margin-top:20px">Project Structure (Site Map)</h3><ul style="list-style-type:disc;padding-left:20px"><li>Homepage (model display and control interface)<ul style="list-style-type:circle;padding-left:20px"><li>Model selection section</li><li>Animation control section</li><li>Lighting adjustment section</li><li>Camera control section</li><li>Color selection section</li><li>Material debugging section</li><li>About page</li></ul></li></ul><h3 style="color:#555;margin-top:20px">Creative Statement</h3><p>This project was developed as part of the 3D Web Technology course assignment. All code, UI design, and 3D models are original works created specifically for this assignment. Any external resources used are properly credited in the code.</p><h3 style="color:#555;margin-top:20px">References</h3><ol style="padding-left:20px"><li>Mr.doob, et al. (2010–2025). <strong>Three.js: JavaScript 3D Library</strong>. Available at: <a href="https://threejs.org" target="_blank">https://threejs.org</a></li><li>Blender Foundation. (2025). <strong>Blender - Free and Open Source 3D Creation Software</strong>. Available at: <a href="https://www.blender.org" target="_blank">https://www.blender.org</a></li><li>Three.js Official Examples and Documentation. (2025). Available at: <a href="https://threejs.org/examples" target="_blank">https://threejs.org/examples</a></li></ol><div style="text-align:center;margin-top:30px"><button onclick="this.parentNode.parentNode.parentNode.remove()" style="background:#007bff;color:#fff;border:none;padding:10px 20px;border-radius:4px;font-size:16px;cursor:pointer">Close</button></div></div></div>';
+                document.body.appendChild(d.firstChild);
+            };
+        }
+
+        /**
+         * Animation loop function
+         */
+        function animate() {
+            // Request next frame
+            requestAnimationFrame(animate);
+
+            // Update controls
+            controls.update();
+
+            // Update current active animation mixer
+            if (currentMixer) {
+                currentMixer.update(clock.getDelta());
+            }
+
+            // Render scene
+            renderer.render(scene, camera);
+        }
+    </script>
+</body>
+</html>
